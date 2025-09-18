@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <style>
+        body { font-family: Arial; background: #f4f4f4; }
+        h2 { color: #0077cc; text-align: center; margin-top: 38px; }
+        table { background: white; border-collapse: collapse; margin-bottom: 30px; width: 92%; margin-left: 4%; }
+        th, td { border: 1px solid #222; padding: 7px 15px; text-align: left; }
+        th { background: #0077cc; color: white; }
+        td { background: #e6f2ff; }
+        .total-row { background: #dff0d8; font-weight: bold; }
+        .input-form { margin: 25px 4%; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 10px #ccc; }
+        .input-form input { margin-right: 12px; padding: 5px 12px; border-radius: 4px; border: 1px solid #bbb; outline: none; }
+        .input-form label { margin-right: 8px; font-weight: bold; }
+        .input-form button { padding: 7px 20px; background: #0077cc; color: white; border: none; border-radius: 4px; cursor:pointer; }
+        button.edit-btn { background: #ffd700; color: #222; margin-right: 7px; }
+        button.delete-btn { background: #d9534f; color: white;}
+        .export-btn { margin-bottom: 18px; background: #048840; color: white; padding: 8px 20px; border-radius: 4px; border: none; cursor: pointer;}
+        #loginBox, #registerBox { width:330px; margin:48px auto 22px auto; padding:32px; background:#fff; border-radius:14px; box-shadow:0 4px 24px #aaa;}
+        #loginBox input, #registerBox input { width:92%; margin-bottom:12px;}
+        #loginBox label, #registerBox label { display:block; margin-bottom:7px;}
+        #loginBox button, #registerBox button { padding:8px 28px;}
+        .hidden { display: none;}
+    </style>
+</head>
+<body>
+    <div id="registerBox">
+        <h3 style="text-align:center; margin-bottom:18px; color:#0077cc;">Register</h3>
+        <form id="registerForm">
+            <label>Username</label>
+            <input type="text" id="regUser" required>
+            <label>Password</label>
+            <input type="password" id="regPass" required>
+            <button type="submit">Register</button>
+        </form>
+        <div id="regMsg" style="color:red; text-align:center; margin-top:13px;"></div>
+        <div style="text-align:center; margin-top:3px;">
+            <button onclick="toLogin()">Already have account? Login</button>
+        </div>
+    </div>
+    <div id="loginBox" class="hidden">
+        <h3 style="text-align:center; margin-bottom:18px; color:#0077cc;">Login</h3>
+        <form id="loginForm">
+            <label>Username</label>
+            <input type="text" id="loginUser" required>
+            <label>Password</label>
+            <input type="password" id="loginPass" required>
+            <button type="submit">Login</button>
+        </form>
+        <div id="loginMsg" style="color:red; text-align:center; margin-top:17px;"></div>
+        <div style="text-align:center; margin-top:3px;">
+            <button onclick="toRegister()">Create New Account</button>
+        </div>
+    </div>
+    <div id="mainContent" class="hidden">
+        <h2>Dashboard</h2>
+        <button class="export-btn" onclick="exportTableToExcel('dataTable', 'inventory-data')">Export to Excel</button>
+        <form class="input-form" id="entryForm">
+            <label>Model:</label> <input type="text" id="model" required>
+            <label>Order Amnt:</label> <input type="number" id="order" required>
+            <label>Delivery Date:</label> <input type="text" id="delivery" required>
+            <label>Return:</label> <input type="number" id="return" required>
+            <label>Profit:</label> <input type="number" id="profit" required>
+            <label>Booker:</label> <input type="text" id="booker" required>
+            <button type="submit" id="addBtn">Add Entry</button>
+        </form>
+        <table id="dataTable">
+            <thead>
+                <tr>
+                    <th>Model</th>
+                    <th>Order Amnt</th>
+                    <th>Delivery Date</th>
+                    <th>Return</th>
+                    <th>Profit</th>
+                    <th>Booker</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+            <tfoot>
+                <tr class="total-row">
+                    <td>Total</td>
+                    <td id="totalOrder">0</td>
+                    <td>-</td>
+                    <td id="totalReturn">0</td>
+                    <td id="totalProfit">0</td>
+                    <td>-</td>
+                    <td>-</td>
+                </tr>
+            </tfoot>
+        </table>
+        <button onclick="logout()" style="margin:20px 0 14px 4%; padding:7px 25px; background:#bb2323; color:white; border-radius:4px; border:none;">Logout</button>
+    </div>
+    <script>
+        // --- USER SYSTEM ---
+        function getUsers() {
+            let users = JSON.parse(localStorage.getItem("dashboardUsers") || "{}");
+            return users;
+        }
+        function setUsers(users) {
+            localStorage.setItem("dashboardUsers", JSON.stringify(users));
+        }
+        let currentUser = localStorage.getItem("dashboardCurrentUser");
+
+        function toLogin() {
+            document.getElementById("registerBox").classList.add("hidden");
+            document.getElementById("loginBox").classList.remove("hidden");
+            document.getElementById("regMsg").textContent = '';
+        }
+        function toRegister() {
+            document.getElementById("loginBox").classList.add("hidden");
+            document.getElementById("registerBox").classList.remove("hidden");
+            document.getElementById("loginMsg").textContent = '';
+        }
+
+        document.getElementById("registerForm").onsubmit = function(e){
+            e.preventDefault();
+            let username = document.getElementById("regUser").value.trim();
+            let password = document.getElementById("regPass").value;
+            let users = getUsers();
+            if (username.length < 3 || password.length < 3) {
+                document.getElementById("regMsg").textContent = "Username & Password min 3 char!";
+                return;
+            }
+            if (users[username]) {
+                document.getElementById("regMsg").textContent = "Username already exists!";
+                return;
+            }
+            users[username] = password;
+            setUsers(users);
+            document.getElementById("regMsg").textContent = "Account Created! Now login.";
+        };
+
+        document.getElementById("loginForm").onsubmit = function(e){
+            e.preventDefault();
+            let username = document.getElementById("loginUser").value.trim();
+            let password = document.getElementById("loginPass").value;
+            let users = getUsers();
+            if(!users[username]) {
+                document.getElementById("loginMsg").textContent = "No account found!";
+                return;
+            }
+            if(users[username]!==password){
+                document.getElementById("loginMsg").textContent = "Invalid password!";
+                return;
+            }
+            localStorage.setItem("dashboardCurrentUser", username);
+            currentUser = username;
+            document.getElementById("loginBox").classList.add("hidden");
+            document.getElementById("mainContent").classList.remove("hidden");
+            loadUserData();
+            updateTable();
+        };
+
+        function logout() {
+            localStorage.removeItem("dashboardCurrentUser");
+            currentUser = null;
+            document.getElementById("mainContent").classList.add("hidden");
+            document.getElementById("loginBox").classList.remove("hidden");
+        }
+
+        // --- USER DATA LOGIC ---
+        function getUserData() {
+            let allData = JSON.parse(localStorage.getItem("inventoryByUser") || "{}");
+            return allData[currentUser] || [];
+        }
+        function saveUserData(data) {
+            let allData = JSON.parse(localStorage.getItem("inventoryByUser") || "{}");
+            allData[currentUser] = data;
+            localStorage.setItem("inventoryByUser", JSON.stringify(allData));
+        }
+        let entries = [], editIndex = null;
+        function loadUserData() {
+            entries = getUserData();
+        }
+
+        function updateTable() {
+            let tbody = document.getElementById('dataTable').getElementsByTagName('tbody')[0];
+            tbody.innerHTML = '';
+            let totalOrder = 0, totalReturn = 0, totalProfit = 0;
+            entries.forEach(function(entry, index) {
+                let row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${entry.model}</td>
+                    <td>${entry.order}</td>
+                    <td>${entry.delivery}</td>
+                    <td>${entry.return}</td>
+                    <td>${entry.profit}</td>
+                    <td>${entry.booker}</td>
+                    <td>
+                        <button class="edit-btn" onclick="editEntry(${index})">Edit</button>
+                        <button class="delete-btn" onclick="deleteEntry(${index})">Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+                totalOrder += parseFloat(entry.order);
+                totalReturn += parseFloat(entry.return);
+                totalProfit += parseFloat(entry.profit);
+            });
+            document.getElementById('totalOrder').textContent = totalOrder;
+            document.getElementById('totalReturn').textContent = totalReturn;
+            document.getElementById('totalProfit').textContent = totalProfit;
+        }
+        document.getElementById('entryForm').onsubmit = function(e) {
+            e.preventDefault();
+            let entry = {
+                model: document.getElementById('model').value,
+                order: document.getElementById('order').value,
+                delivery: document.getElementById('delivery').value,
+                return: document.getElementById('return').value,
+                profit: document.getElementById('profit').value,
+                booker: document.getElementById('booker').value
+            };
+            if (editIndex === null) {
+                entries.push(entry);
+            } else {
+                entries[editIndex] = entry;
+                editIndex = null;
+                document.getElementById('addBtn').textContent = 'Add Entry';
+            }
+            saveUserData(entries);
+            updateTable();
+            this.reset();
+        };
+        window.editEntry = function(index) {
+            let entry = entries[index];
+            document.getElementById('model').value = entry.model;
+            document.getElementById('order').value = entry.order;
+            document.getElementById('delivery').value = entry.delivery;
+            document.getElementById('return').value = entry.return;
+            document.getElementById('profit').value = entry.profit;
+            document.getElementById('booker').value = entry.booker;
+            editIndex = index;
+            document.getElementById('addBtn').textContent = 'Update Entry';
+        };
+        window.deleteEntry = function(index) {
+            entries.splice(index, 1);
+            saveUserData(entries);
+            updateTable();
+            document.getElementById('entryForm').reset();
+            editIndex = null;
+            document.getElementById('addBtn').textContent = 'Add Entry';
+        };
+
+        // --- EXPORT TO EXCEL FUNCTION ---
+        function exportTableToExcel(tableID, filename = ''){
+            var downloadLink;
+            var dataType = 'application/vnd.ms-excel';
+            var tableSelect = document.getElementById(tableID);
+            var tableHTML = tableSelect.outerHTML.replace(/ /g, '%20');
+            filename = filename ? filename + '.xls' : 'excel_data.xls';
+            downloadLink = document.createElement("a");
+            document.body.appendChild(downloadLink);
+            if (navigator.msSaveOrOpenBlob) {
+                var blob = new Blob(['\ufeff', tableHTML], { type: dataType });
+                navigator.msSaveOrOpenBlob(blob, filename);
+            } else {
+                downloadLink.href = 'data:' + dataType + ', ' + tableHTML;
+                downloadLink.download = filename;
+                downloadLink.click();
+            }
+        }
+        window.onload = function(){
+            if(currentUser){
+                document.getElementById("registerBox").classList.add("hidden");
+                document.getElementById("loginBox").classList.add("hidden");
+                document.getElementById("mainContent").classList.remove("hidden");
+                loadUserData();
+                updateTable();
+            }
+        };
+    </script>
+</body>
+</html>
